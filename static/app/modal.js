@@ -501,16 +501,12 @@ function editProvider(uuid, event) {
     event.stopPropagation();
 
     const providerDetail = event.target.closest('.provider-item-detail');
-    console.log(`[Edit Mode] Starting edit for provider ${uuid}`);
-    console.log(`[Edit Mode] Provider detail element found:`, providerDetail ? 'YES' : 'NO');
-
     const configInputs = providerDetail.querySelectorAll('input[data-config-key]');
     const configSelects = providerDetail.querySelectorAll('select[data-config-key]');
     const content = providerDetail.querySelector(`#content-${uuid}`);
 
     // 如果还没有展开，则自动展开编辑框
     if (content && !content.classList.contains('expanded')) {
-        console.log(`[Edit Mode] Content not expanded, expanding...`);
         toggleProviderDetails(uuid);
     }
 
@@ -524,36 +520,33 @@ function editProvider(uuid, event) {
                 input.value = actualValue;
             }
         });
-        
+
         // 启用文件上传按钮
         const uploadButtons = providerDetail.querySelectorAll('.upload-btn');
         uploadButtons.forEach(button => {
             button.disabled = false;
         });
-        
+
         // 启用下拉选择框
         configSelects.forEach(select => {
             select.disabled = false;
         });
-        
+
         // 启用模型复选框
         const modelCheckboxes = providerDetail.querySelectorAll('.model-checkbox');
-        console.log(`[Edit Mode] Found ${modelCheckboxes.length} model checkboxes to enable`);
 
         if (modelCheckboxes.length === 0) {
             // 如果找不到 checkbox，可能是模型列表还在加载中
-            console.log(`[Edit Mode] No checkboxes found, possibly still loading. Waiting...`);
-
             // 检查是否有加载指示器
             const loadingIndicators = providerDetail.querySelectorAll('.models-loading');
             if (loadingIndicators.length > 0) {
-                console.log(`[Edit Mode] Model lists are still loading. Will retry after load.`);
+                console.log(`[Edit Mode] Model lists still loading, setting up observer for ${uuid}`);
 
                 // 设置一个观察器，当 checkbox 出现时自动启用
                 const observer = new MutationObserver((mutations) => {
                     const checkboxes = providerDetail.querySelectorAll('.model-checkbox');
                     if (checkboxes.length > 0) {
-                        console.log(`[Edit Mode] Checkboxes loaded, enabling ${checkboxes.length} checkboxes`);
+                        console.log(`[Edit Mode] Checkboxes loaded, enabled ${checkboxes.length} checkboxes for ${uuid}`);
                         checkboxes.forEach(checkbox => {
                             checkbox.disabled = false;
                         });
@@ -573,10 +566,9 @@ function editProvider(uuid, event) {
             // 如果找到了 checkbox，直接启用
             modelCheckboxes.forEach(checkbox => {
                 checkbox.disabled = false;
-                console.log(`[Edit Mode] Enabled checkbox: ${checkbox.value}, classes: ${checkbox.className}`);
             });
         }
-        
+
         // 添加编辑状态类
         providerDetail.classList.add('editing');
         

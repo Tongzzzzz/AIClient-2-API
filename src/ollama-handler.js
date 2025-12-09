@@ -407,14 +407,45 @@ export async function handleOllamaTags(req, res, apiService, currentConfig, prov
         const ollamaConverter = ConverterFactory.getConverter(MODEL_PROTOCOL_PREFIX.OLLAMA);
         
         // Helper to fetch and convert models from a provider
-        const fetchProviderModels = async (providerType, service) => {
+        const fetchProviderModels = async (providerType, service, providerConfig = null) => {
             try {
                 const models = await service.listModels();
                 const sourceProtocol = getProtocolPrefix(providerType);
                 const tags = ollamaConverter.convertModelList(models, sourceProtocol);
-                
+
                 if (tags.models && Array.isArray(tags.models)) {
-                    return addPrefixToModels(tags.models, providerType, 'ollama');
+                    let filteredModels = tags.models;
+
+                    // 应用白名单和黑名单过滤（如果提供了 providerConfig）
+                    if (providerConfig) {
+                        const supportedModels = providerConfig.supportedModels;
+                        const notSupportedModels = providerConfig.notSupportedModels;
+
+                        // PRIORITY 1: 白名单优先
+                        if (Array.isArray(supportedModels) && supportedModels.length > 0) {
+                            const beforeCount = filteredModels.length;
+                            filteredModels = filteredModels.filter(model => {
+                                // 提取原始模型名（去除 [Provider] 前缀，如果有的话）
+                                // 例如：'[OpenAI] gpt-4' → 'gpt-4' 或直接 'gpt-4' → 'gpt-4'
+                                const originalName = model.name.replace(/^\[.*?\]\s+/, '');
+                                return supportedModels.includes(originalName);
+                            });
+                            console.log(`[Ollama] Applied whitelist for ${providerType}: ${beforeCount} → ${filteredModels.length} models (whitelist: ${supportedModels.length} models)`);
+                        }
+                        // PRIORITY 2: 黑名单回退
+                        else if (Array.isArray(notSupportedModels) && notSupportedModels.length > 0) {
+                            const beforeCount = filteredModels.length;
+                            filteredModels = filteredModels.filter(model => {
+                                // 提取原始模型名（去除 [Provider] 前缀，如果有的话）
+                                // 例如：'[OpenAI] gpt-4' → 'gpt-4' 或直接 'gpt-4' → 'gpt-4'
+                                const originalName = model.name.replace(/^\[.*?\]\s+/, '');
+                                return !notSupportedModels.includes(originalName);
+                            });
+                            console.log(`[Ollama] Applied blacklist for ${providerType}: ${beforeCount} → ${filteredModels.length} models (blacklist: ${notSupportedModels.length} models)`);
+                        }
+                    }
+
+                    return addPrefixToModels(filteredModels, providerType, 'ollama');
                 }
                 return [];
             } catch (error) {
@@ -424,20 +455,34 @@ export async function handleOllamaTags(req, res, apiService, currentConfig, prov
         };
         
         // Collect fetch promises
-        const fetchPromises = [fetchProviderModels(currentConfig.MODEL_PROVIDER, apiService)];
-        
+        let mainProviderConfig = currentConfig;
+
+        // 尝试从 provider pool 中获取主 provider 的准确配置（使用 UUID 精确定位）
+        if (currentConfig.uuid && providerPoolManager?.providerPools) {
+            const mainProviders = providerPoolManager.providerPools[currentConfig.MODEL_PROVIDER];
+            if (mainProviders && Array.isArray(mainProviders)) {
+                const selectedProvider = mainProviders.find(p => p.uuid === currentConfig.uuid);
+                if (selectedProvider) {
+                    mainProviderConfig = selectedProvider;
+                    console.log(`[Ollama] Using provider pool config for ${currentConfig.MODEL_PROVIDER}: ${currentConfig.uuid}`);
+                }
+            }
+        }
+
+        const fetchPromises = [fetchProviderModels(currentConfig.MODEL_PROVIDER, apiService, mainProviderConfig)];
+
         // Add provider pool fetches
         if (providerPoolManager?.providerPools) {
             const { getServiceAdapter } = await import('./adapter.js');
-            
+
             for (const [providerType, providers] of Object.entries(providerPoolManager.providerPools)) {
                 if (providerType === currentConfig.MODEL_PROVIDER) continue;
-                
-                const healthyProvider = providers.find(p => p.isHealthy);
+
+                const healthyProvider = providers.find(p => p.isHealthy && !p.isDisabled);
                 if (healthyProvider) {
                     const tempConfig = { ...currentConfig, ...healthyProvider, MODEL_PROVIDER: providerType };
                     const service = getServiceAdapter(tempConfig);
-                    fetchPromises.push(fetchProviderModels(providerType, service));
+                    fetchPromises.push(fetchProviderModels(providerType, service, healthyProvider));
                 }
             }
         }
