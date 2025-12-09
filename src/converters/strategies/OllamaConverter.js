@@ -448,7 +448,7 @@ export class OllamaConverter extends BaseConverter {
             architecture = 'gemini';
             
             // Gemini 2.5 Pro
-            if (lowerName.includes('2.5') && lowerName.includes('pro')) {
+            if ((lowerName.includes('2.5') || lowerName.includes('3')) && lowerName.includes('pro')) {
                 contextLength = 1048576; // 1M input tokens
                 maxOutputTokens = 65536; // 65K output tokens
             }

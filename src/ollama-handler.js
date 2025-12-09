@@ -290,6 +290,12 @@ export function normalizeOllamaPath(path, requestUrl) {
             requestUrl.pathname = normalizedPath;
         }
     }
+    if (normalizedPath === '/') {
+        normalizedPath = '/api/version';
+        if (requestUrl) {
+            requestUrl.pathname = normalizedPath;
+        }
+    }
     
     // Check if this is an Ollama endpoint
     const isOllamaEndpoint = normalizedPath.startsWith('/api/');
@@ -375,13 +381,29 @@ export async function handleOllamaEndpointsAfterAuth(method, path, req, res, api
     return false;
 }
 
+let modelsCache = {
+    data: null,
+    timestamp: 0
+};
+
 /**
  * 处理 Ollama /api/tags 端点（列出模型）
  */
 export async function handleOllamaTags(req, res, apiService, currentConfig, providerPoolManager) {
     try {
         console.log('[Ollama] Handling /api/tags request');
-        
+
+        if (modelsCache.data && Date.now() - modelsCache.timestamp < 10000) {
+            console.log('[Ollama] Returning cached models list');
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Server': `ollama/${OLLAMA_VERSION}`
+            });
+            res.end(JSON.stringify(modelsCache.data));
+            return;
+        }
+
         const ollamaConverter = ConverterFactory.getConverter(MODEL_PROTOCOL_PREFIX.OLLAMA);
         
         // Helper to fetch and convert models from a provider
@@ -425,7 +447,12 @@ export async function handleOllamaTags(req, res, apiService, currentConfig, prov
         const allModels = results.flat();
         
         const response = { models: allModels };
-        
+
+        modelsCache = {
+            data: response,
+            timestamp: Date.now()
+        };
+
         res.writeHead(200, { 
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',

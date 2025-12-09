@@ -130,6 +130,10 @@ export function isAuthorized(req, requestUrl, REQUIRED_API_KEY) {
     const googApiKey = req.headers['x-goog-api-key'];
     const claudeApiKey = req.headers['x-api-key']; // Claude-specific header
 
+    if (!REQUIRED_API_KEY) {
+        return true;
+    }
+
     // Check for Bearer token in Authorization header (OpenAI style)
     if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.substring(7);
