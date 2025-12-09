@@ -9,3 +9,4 @@ input_system_prompt.txt
 credentials.json
 .idea
 token-store.json
+api-server.log

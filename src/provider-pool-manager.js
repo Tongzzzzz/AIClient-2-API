@@ -76,7 +76,11 @@ export class ProviderPoolManager {
                 providerConfig.lastUsed = providerConfig.lastUsed !== undefined ? providerConfig.lastUsed : null;
                 providerConfig.usageCount = providerConfig.usageCount !== undefined ? providerConfig.usageCount : 0;
                 providerConfig.errorCount = providerConfig.errorCount !== undefined ? providerConfig.errorCount : 0;
-                
+
+                // 初始化模型过滤数组
+                providerConfig.supportedModels = providerConfig.supportedModels || [];
+                providerConfig.notSupportedModels = providerConfig.notSupportedModels || [];
+
                 // 优化2: 简化 lastErrorTime 处理逻辑
                 providerConfig.lastErrorTime = providerConfig.lastErrorTime instanceof Date
                     ? providerConfig.lastErrorTime.toISOString()
@@ -111,15 +115,24 @@ export class ProviderPoolManager {
             p.config.isHealthy && !p.config.isDisabled
         );
 
-        // 如果指定了模型，则排除不支持该模型的提供商
+        // 如果指定了模型，则应用白名单和黑名单过滤
         if (requestedModel) {
             const modelFilteredProviders = availableAndHealthyProviders.filter(p => {
-                // 如果提供商没有配置 notSupportedModels，则认为它支持所有模型
-                if (!p.config.notSupportedModels || !Array.isArray(p.config.notSupportedModels)) {
-                    return true;
+                const supportedModels = p.config.supportedModels;
+                const notSupportedModels = p.config.notSupportedModels;
+
+                // PRIORITY 1: 白名单优先 - 如果配置了非空白名单，只允许白名单中的模型
+                if (Array.isArray(supportedModels) && supportedModels.length > 0) {
+                    return supportedModels.includes(requestedModel);
                 }
-                // 检查 notSupportedModels 数组中是否包含请求的模型，如果包含则排除
-                return !p.config.notSupportedModels.includes(requestedModel);
+
+                // PRIORITY 2: 黑名单回退 - 如果没有白名单，使用黑名单逻辑
+                if (Array.isArray(notSupportedModels) && notSupportedModels.length > 0) {
+                    return !notSupportedModels.includes(requestedModel);
+                }
+
+                // PRIORITY 3: 无过滤 - 如果都没有配置，允许所有模型
+                return true;
             });
 
             if (modelFilteredProviders.length === 0) {

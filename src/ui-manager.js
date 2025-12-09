@@ -720,6 +720,10 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
             providerConfig.errorCount = providerConfig.errorCount || 0;
             providerConfig.lastErrorTime = providerConfig.lastErrorTime || null;
 
+            // 初始化模型过滤数组
+            providerConfig.supportedModels = providerConfig.supportedModels || [];
+            providerConfig.notSupportedModels = providerConfig.notSupportedModels || [];
+
             const filePath = currentConfig.PROVIDER_POOLS_FILE_PATH || 'provider_pools.json';
             let providerPools = {};
             
@@ -831,7 +835,14 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
                 lastUsed: existingProvider.lastUsed, // Preserve usage stats
                 usageCount: existingProvider.usageCount,
                 errorCount: existingProvider.errorCount,
-                lastErrorTime: existingProvider.lastErrorTime
+                lastErrorTime: existingProvider.lastErrorTime,
+                // 确保数组字段正确更新
+                supportedModels: providerConfig.supportedModels !== undefined
+                    ? providerConfig.supportedModels
+                    : (existingProvider.supportedModels || []),
+                notSupportedModels: providerConfig.notSupportedModels !== undefined
+                    ? providerConfig.notSupportedModels
+                    : (existingProvider.notSupportedModels || [])
             };
 
             providerPools[providerType][providerIndex] = updatedProvider;

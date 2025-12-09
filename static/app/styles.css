@@ -3087,6 +3087,47 @@ input:checked + .toggle-slider:before {
     color: #dc3545;
 }
 
+/* 支持的模型选择器样式（白名单） */
+.supported-models-section {
+    grid-column: 1 / -1;
+    margin-top: 16px;
+    border-top: 1px solid #dee2e6;
+    padding-top: 16px;
+}
+
+.supported-models-section label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #28a745;
+    margin-bottom: 12px;
+}
+
+.supported-models-section .help-text {
+    font-size: 12px;
+    font-weight: normal;
+    color: #6c757d;
+    margin-left: 4px;
+}
+
+.supported-models-container {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 100px;
+}
+
+/* 白名单复选框选中状态（绿色） */
+.supported-model-checkbox:checked + .model-name {
+    color: #28a745 !important;
+    font-weight: 500;
+    background-color: rgba(40, 167, 69, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
 /* 编辑模式下的样式 */
 .provider-item-detail.editing .model-checkbox-label {
     cursor: pointer;
